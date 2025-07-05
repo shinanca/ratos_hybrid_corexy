@@ -60,12 +60,9 @@ class RatOSHybridCoreXYKinematics:
                     self.rails[3].steppers[1].setup_itersolve('corexy_stepper_alloc', b'+')
                 if len(self.rails[3].steppers)>2:
                     raise self.error("Unexpected stepper configuration")
-            dc_rail_0 = idex_modes.DualCarriagesRail(
-                    self.rails[0], axis=0, active=True)
-            dc_rail_1 = idex_modes.DualCarriagesRail(
-                    self.rails[3], axis=0, active=False)
             self.dc_module = idex_modes.DualCarriages(
-                    dc_config, dc_rail_0, dc_rail_1, axis=0)
+                    self.printer, [self.rails[0]], [self.rails[3]], axes=[0],
+                    safe_dist=dc_config.getfloat('safe_distance', None, minval=0.))
         for s in self.get_steppers():
             s.set_trapq(toolhead.get_trapq())
             toolhead.register_step_generator(s.generate_steps)
@@ -102,8 +99,8 @@ class RatOSHybridCoreXYKinematics:
             rail.set_position(newpos)
             for axis_name in homing_axes:
                 axis = "xyz".index(axis_name)
-                if self.dc_module and axis == self.dc_module.axis:
-                    rail = self.dc_module.get_primary_rail().get_rail()
+                if self.dc_module and axis == 0:
+                    rail = self.dc_module.get_primary_rail(axis)
                 else:
                     rail = self.rails[axis]
                 self.limits[axis] = rail.get_range()
@@ -126,7 +123,7 @@ class RatOSHybridCoreXYKinematics:
     def home(self, homing_state):
         for axis in homing_state.get_axes():
             if self.dc_module is not None and axis == 0:
-                self.dc_module.home(homing_state)
+                self.dc_module.home(homing_state, axis)
             else:
                 self.home_axis(homing_state, axis, self.rails[axis])
     def _check_endstops(self, move):
